@@ -35,10 +35,26 @@ namespace FI.AtividadeEntrevista.DAL.Beneficiarios
             return cli.FirstOrDefault();
         }
 
-        internal List<DML.Beneficiario> ListarPorCliente(long idCliente)
+        internal bool VerificarExistencia(string CPF, long? idIgnorar = null)
         {
             List<System.Data.SqlClient.SqlParameter> parametros = new List<System.Data.SqlClient.SqlParameter>();
-            parametros.Add(new System.Data.SqlClient.SqlParameter("IdCliente", idCliente));
+
+            parametros.Add(new System.Data.SqlClient.SqlParameter("CPF", CPF));
+            if (idIgnorar.HasValue)
+                parametros.Add(new System.Data.SqlClient.SqlParameter("idIgnorar", idIgnorar.Value));
+
+            DataSet ds = base.Consultar("FI_SP_VerificaBeneficiario", parametros);
+
+            return ds.Tables[0].Rows.Count > 0;
+        }
+
+        internal List<DML.Beneficiario> ListarPorCliente(long idCliente, int iniciarEm = 0, int quantidade = 100, string campoOrdenacao = "Nome", bool crescente = true)
+        {
+            List<System.Data.SqlClient.SqlParameter> parametros = new List<System.Data.SqlClient.SqlParameter>();
+            parametros.Add(new System.Data.SqlClient.SqlParameter("iniciarEm", iniciarEm));
+            parametros.Add(new System.Data.SqlClient.SqlParameter("quantidade", 10));
+            parametros.Add(new System.Data.SqlClient.SqlParameter("campoOrdenacao", campoOrdenacao));
+            parametros.Add(new System.Data.SqlClient.SqlParameter("crescente", crescente ? 1 : 0));
             DataSet ds = base.Consultar("FI_SP_PesqBeneficiario", parametros);
             return Converter(ds);
         }

@@ -7,6 +7,7 @@ using System.Web;
 using System.Web.Mvc;
 using FI.AtividadeEntrevista.DML;
 using FI.AtividadeEntrevista.Utils;
+using Newtonsoft.Json; 
 
 namespace WebAtividadeEntrevista.Controllers
 {
@@ -24,10 +25,10 @@ namespace WebAtividadeEntrevista.Controllers
         }
 
         [HttpPost]
-        public JsonResult Incluir(ClienteModel model)
+        public JsonResult Incluir(ClienteModel model, string BeneficiariosJson)
         {
             BoCliente bo = new BoCliente();
-
+            BoBeneficiario boBeneficiario = new BoBeneficiario(); 
             if (!this.ModelState.IsValid)
             {
                 List<string> erros = (from item in ModelState.Values
@@ -45,7 +46,7 @@ namespace WebAtividadeEntrevista.Controllers
                     return Json("CPF inválido");
                 }
 
-                if (bo.VerificarExistencia(model.CPF))
+                if (bo.VerificarExistencia(model.CPF, model.Id))
                 {
                     Response.StatusCode = 400; 
                     return Json("CPF já cadastrado");
@@ -64,16 +65,62 @@ namespace WebAtividadeEntrevista.Controllers
                     Telefone = model.Telefone,
                     CPF = model.CPF
                 });
-           
+
+                if (!string.IsNullOrWhiteSpace(BeneficiariosJson))
+                {
+                    var beneficiariosModel = JsonConvert.DeserializeObject<List<BeneficiarioModel>>(BeneficiariosJson);
+                    if(beneficiariosModel != null)
+                    {
+
+                        var cpfs = beneficiariosModel
+                            .Where(b => !string.IsNullOrWhiteSpace(b.CPF))
+                            .Select(b => b.CPF.Replace(".", "").Replace("-", "").Trim())
+                            .ToList();
+
+                        var cpfsDuplicados = cpfs
+                            .GroupBy(c => c)
+                            .Where(g => g.Count() > 1)
+                            .Select(g => g.Key)
+                            .ToList();
+
+                        if (cpfsDuplicados.Any())
+                        {
+                            Response.StatusCode = 400;
+                            return Json("Não é permitido cadastrar beneficiários com o mesmo CPF para o mesmo cliente.");
+                        }
+
+                        foreach (var bm in beneficiariosModel)
+                        {
+                            if(!CpfUtils.isCpf(bm.CPF))
+                            {
+                                Response.StatusCode = 400;
+                                return Json($"CPF do beneficiário {bm.Nome} é inválido");
+                            }
+                            if (boBeneficiario.VerificarExistencia(bm.CPF))
+                            {
+                                Response.StatusCode = 400;
+                                return Json($"CPF do beneficiário {bm.Nome} já cadastrado");
+                            }
+                            boBeneficiario.Incluir(new Beneficiario()
+                            {
+                                Nome = bm.Nome,
+                                CPF = bm.CPF != null ? bm.CPF.Replace(".", "").Replace("-", "").Trim() : null,
+                                IdCliente = model.Id
+                            });
+                        }
+                    }
+                }
+
                 return Json("Cadastro efetuado com sucesso");
             }
         }
 
         [HttpPost]
-        public JsonResult Alterar(ClienteModel model)
+        public JsonResult Alterar(ClienteModel model, string BeneficiariosJson)
         {
             BoCliente bo = new BoCliente();
-       
+            BoBeneficiario boBeneficiario = new BoBeneficiario();
+
             if (!this.ModelState.IsValid)
             {
                 List<string> erros = (from item in ModelState.Values
@@ -91,7 +138,7 @@ namespace WebAtividadeEntrevista.Controllers
                     return Json("CPF inválido");
                 }
 
-                if (bo.VerificarExistencia(model.CPF))
+                if (bo.VerificarExistencia(model.CPF, model.Id))
                 {
                     Response.StatusCode = 400;
                     return Json("CPF já cadastrado");
@@ -110,7 +157,70 @@ namespace WebAtividadeEntrevista.Controllers
                     Telefone = model.Telefone,
                     CPF = model.CPF
                 });
-                               
+
+                if (!string.IsNullOrWhiteSpace(BeneficiariosJson))
+                {
+                    var enviados = JsonConvert.DeserializeObject<List<BeneficiarioModel>>(BeneficiariosJson)
+                                   ?? new List<BeneficiarioModel>();
+
+                    var cpfs = enviados
+                        .Where(b => !string.IsNullOrWhiteSpace(b.CPF))
+                        .Select(b => b.CPF.Replace(".", "").Replace("-", "").Trim())
+                        .ToList();
+
+                    var cpfsDuplicados = cpfs
+                        .GroupBy(c => c)
+                        .Where(g => g.Count() > 1)
+                        .Select(g => g.Key)
+                        .ToList();
+
+                    if (cpfsDuplicados.Any())
+                    {
+                        Response.StatusCode = 400;
+                        return Json("Não é permitido cadastrar beneficiários com o mesmo CPF para o mesmo cliente.");
+                    }
+
+                    var atuais = boBeneficiario.ListarPorCliente(model.Id) ?? new List<Beneficiario>();
+
+                    var enviadosIds = new HashSet<long>(enviados.Where(x => x.Id > 0).Select(x => x.Id));
+
+                    foreach (var atual in atuais)
+                    {
+                        if (!enviadosIds.Contains(atual.Id))
+                        {
+                            boBeneficiario.Excluir(atual.Id);
+                        }
+                    }
+
+                    foreach (var bm in enviados)
+                    {
+                        var bene = new Beneficiario
+                        {
+                            Id = bm.Id,
+                            IdCliente = model.Id,
+                            CPF = bm.CPF != null ? bm.CPF.Replace(".", "").Replace("-", "").Trim() : null,
+                            Nome = bm.Nome
+                        };
+
+                        if (bene.Id == 0)
+                        {
+                            boBeneficiario.Incluir(bene);
+                        }
+                        else
+                        {
+                            boBeneficiario.Alterar(bene);
+                        }
+                    }
+                }
+                else
+                {
+                    var atuais = boBeneficiario.ListarPorCliente(model.Id) ?? new List<Beneficiario>();
+                    foreach (var atual in atuais)
+                    {
+                        boBeneficiario.Excluir(atual.Id);
+                    }
+                }
+
                 return Json("Cadastro alterado com sucesso");
             }
         }
@@ -143,6 +253,16 @@ namespace WebAtividadeEntrevista.Controllers
             }
 
             return View(model);
+        }
+
+        [HttpGet]
+        public JsonResult ListarBeneficiarios(long idCliente)
+        {
+            var boBeneficiario = new BoBeneficiario();
+            var beneficiarios = boBeneficiario.ListarPorCliente(idCliente)
+                .Select(b => new { b.Id, b.Nome, b.CPF })
+                .ToList();
+            return Json(beneficiarios, JsonRequestBehavior.AllowGet);
         }
 
         [HttpPost]

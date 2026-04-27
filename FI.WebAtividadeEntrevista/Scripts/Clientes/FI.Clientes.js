@@ -1,7 +1,8 @@
-﻿
-$(document).ready(function () {
+﻿$(document).ready(function () {
     $('#formCadastro').submit(function (e) {
         e.preventDefault();
+        var beneficiariosJson = typeof beneficiarios !== "undefined" ? JSON.stringify(beneficiarios) : "[]";
+
         $.ajax({
             url: urlPost,
             method: "POST",
@@ -15,7 +16,8 @@ $(document).ready(function () {
                 "Cidade": $(this).find("#Cidade").val(),
                 "Logradouro": $(this).find("#Logradouro").val(),
                 "Telefone": $(this).find("#Telefone").val(),
-                "CPF": $(this).find("#CPF").val().replace(/\D/g,"")
+                "CPF": $(this).find("#CPF").val().replace(/\D/g, ""),
+                "BeneficiariosJson": beneficiariosJson
             },
             error: function (r) {
                 if (r.status == 400)
@@ -23,13 +25,29 @@ $(document).ready(function () {
                 else if (r.status == 500)
                     ModalDialog("Ocorreu um erro", "Ocorreu um erro interno no servidor.");
             },
-            success:
-            function (r) {
-                ModalDialog("Sucesso!", r)
-                $("#formCadastro")[0].reset();
+            success: function (r) {
+                if (r.Result === "OK") {
+                    var clienteId = r.ClienteId;
+                    $.ajax({
+                        url: '/Beneficiario/IncluirMultiplos',
+                        method: 'POST',
+                        data: {
+                            idCliente: clienteId,
+                            beneficiarios: JSON.stringify(beneficiarios)
+                        },
+                        success: function (res) {
+                            ModalDialog("Sucesso!", "Cliente e beneficiários salvos com sucesso!");
+                            $("#formCadastro")[0].reset();
+                        }
+                    });
+                } else {
+                    ModalDialog("Sucesso!", r);
+                    $("#formCadastro")[0].reset();
+                }
             }
         });
-    })
+    });
+
     $('#CPF').on('input', function () {
         $(this).val(formatarCPF($(this).val()));
     });
@@ -37,8 +55,7 @@ $(document).ready(function () {
         $(this).val(formatarCPF($(this).val()));
     });
     $('#CPF').val(formatarCPF($('#CPF').val()));
-})
-
+});
 function formatarCPF(cpf) {
     cpf = cpf.replace(/\D/g, "").slice(0, 11);
     cpf = cpf.replace(/(\d{3})(\d)/, "$1.$2");
