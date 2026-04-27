@@ -1,6 +1,4 @@
-# FI.WebAtividadeEntrevista
-
-Projeto de teste técnico para cadastro de clientes e beneficiários, desenvolvido em ASP.NET Framework 4.8.
+# Projeto de teste técnico para cadastro de clientes e beneficiários, desenvolvido em ASP.NET Framework 4.8.
 
 ## Descrição
 
@@ -20,7 +18,7 @@ Este sistema permite o cadastro de clientes e a gestão de beneficiários associ
 
 ## Tecnologias Utilizadas
 
-- ASP.NET Framework 4.8 (Web Forms/MVC)
+- ASP.NET Framework 4.8 (MVC)
 - C#
 - JavaScript (jQuery)
 - HTML5 e CSS3
