@@ -80,11 +80,11 @@
         $('#msgBeneficiario').text('');
 
         if (!isCpfValido(cpf)) {
-            $('#msgBeneficiario').text('CPF do beneficiário inválido!');
+            $('#msgBeneficiario').text('CPF do beneficiario invalido!');
             return;
         }
         if (cpfDuplicado(cpf, null)) {
-            $('#msgBeneficiario').text('Já existe um beneficiário com este CPF.');
+            $('#msgBeneficiario').text('Já existe um beneficiario com este CPF.');
             return;
         }
         beneficiarios.push({ cpf: cpf, nome: nome });
