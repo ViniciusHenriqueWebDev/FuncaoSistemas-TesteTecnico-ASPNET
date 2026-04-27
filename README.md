@@ -1,4 +1,6 @@
-# Projeto de teste técnico para cadastro de clientes e beneficiários, desenvolvido em ASP.NET Framework 4.8.
+# Projeto de teste técnico para a empresa Função Sistemas: 
+
+## Objetivo: cadastro de clientes e beneficiários, desenvolvido em ASP.NET MVC
 
 ## Descrição
 
